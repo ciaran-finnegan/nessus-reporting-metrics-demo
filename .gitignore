@@ -1,3 +1,5 @@
+# Secrets
+.env
 # Python
 __pycache__/
 *.py[cod]
@@ -34,4 +36,6 @@ ENV/
 # Project specific
 .pdf
 .csv
-*.log 
+*.log # Ignore environment files
+.env
+.env.*
