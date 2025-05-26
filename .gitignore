@@ -32,5 +32,6 @@ ENV/
 *.swo
 
 # Project specific
-docs/
+.pdf
+.csv
 *.log 

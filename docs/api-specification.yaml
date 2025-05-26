@@ -1,0 +1,1309 @@
+openapi: 3.0.0
+info:
+  title: Vulnerability Management API
+  description: |
+    RESTful API for vulnerability management system with Business Groups and Asset Tags support.
+    Based on Vulcan Cyber ExposureOS™ patterns and integrated with Supabase backend.
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+  - url: http://localhost:8000/v1
+    description: Development server
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+tags:
+  - name: Authentication
+    description: Authentication endpoints
+  - name: Assets
+    description: Asset management operations
+  - name: Vulnerabilities
+    description: Vulnerability management operations
+  - name: Business Groups
+    description: Business group hierarchy management
+  - name: Asset Tags
+    description: Asset tag management and assignment
+  - name: Scans
+    description: Vulnerability scan management
+  - name: Reports
+    description: Reporting and analytics
+  - name: Dashboard
+    description: Dashboard data endpoints
+
+paths:
+  # Authentication
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  # Assets
+  /assets:
+    get:
+      tags:
+        - Assets
+      summary: List assets with filtering
+      operationId: listAssets
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - $ref: '#/components/parameters/SortParam'
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [Host, Code Project, Website, Image, Cloud Resource]
+        - name: business_group_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: tag_ids
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+          style: form
+          explode: false
+        - name: criticality_min
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 5
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of assets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetListResponse'
+
+    post:
+      tags:
+        - Assets
+      summary: Create new asset
+      operationId: createAsset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetCreate'
+      responses:
+        '201':
+          description: Asset created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+
+  /assets/{asset_id}:
+    get:
+      tags:
+        - Assets
+      summary: Get asset details
+      operationId: getAsset
+      parameters:
+        - $ref: '#/components/parameters/AssetIdParam'
+      responses:
+        '200':
+          description: Asset details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetDetail'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+    patch:
+      tags:
+        - Assets
+      summary: Update asset
+      operationId: updateAsset
+      parameters:
+        - $ref: '#/components/parameters/AssetIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetUpdate'
+      responses:
+        '200':
+          description: Asset updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+
+  /assets/{asset_id}/vulnerabilities:
+    get:
+      tags:
+        - Assets
+      summary: Get vulnerabilities for an asset
+      operationId: getAssetVulnerabilities
+      parameters:
+        - $ref: '#/components/parameters/AssetIdParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: severity
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [Critical, High, Medium, Low, Info]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [Open, Fixed, Accepted, False Positive]
+      responses:
+        '200':
+          description: Asset vulnerabilities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VulnerabilityListResponse'
+
+  /assets/{asset_id}/tags:
+    post:
+      tags:
+        - Assets
+      summary: Assign tags to asset
+      operationId: assignAssetTags
+      parameters:
+        - $ref: '#/components/parameters/AssetIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tag_ids
+              properties:
+                tag_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '200':
+          description: Tags assigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+
+  # Vulnerabilities
+  /vulnerabilities:
+    get:
+      tags:
+        - Vulnerabilities
+      summary: List vulnerabilities
+      operationId: listVulnerabilities
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - $ref: '#/components/parameters/SortParam'
+        - name: severity
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [Critical, High, Medium, Low, Info]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [Open, Fixed, Accepted, False Positive]
+        - name: cve
+          in: query
+          schema:
+            type: string
+        - name: business_group_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of vulnerabilities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VulnerabilityListResponse'
+
+  /vulnerabilities/{vulnerability_id}:
+    get:
+      tags:
+        - Vulnerabilities
+      summary: Get vulnerability details
+      operationId: getVulnerability
+      parameters:
+        - name: vulnerability_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Vulnerability details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VulnerabilityDetail'
+
+    patch:
+      tags:
+        - Vulnerabilities
+      summary: Update vulnerability status
+      operationId: updateVulnerability
+      parameters:
+        - name: vulnerability_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [Open, Fixed, Accepted, False Positive]
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Vulnerability updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vulnerability'
+
+  # Business Groups
+  /business-groups:
+    get:
+      tags:
+        - Business Groups
+      summary: List business groups
+      operationId: listBusinessGroups
+      parameters:
+        - name: include_children
+          in: query
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Business group hierarchy
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BusinessGroup'
+
+    post:
+      tags:
+        - Business Groups
+      summary: Create business group
+      operationId: createBusinessGroup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessGroupCreate'
+      responses:
+        '201':
+          description: Business group created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessGroup'
+
+  /business-groups/{group_id}:
+    get:
+      tags:
+        - Business Groups
+      summary: Get business group details
+      operationId: getBusinessGroup
+      parameters:
+        - name: group_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Business group details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessGroupDetail'
+
+    patch:
+      tags:
+        - Business Groups
+      summary: Update business group
+      operationId: updateBusinessGroup
+      parameters:
+        - name: group_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessGroupUpdate'
+      responses:
+        '200':
+          description: Business group updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessGroup'
+
+  /business-groups/{group_id}/assets:
+    post:
+      tags:
+        - Business Groups
+      summary: Assign assets to business group
+      operationId: assignAssetsToGroup
+      parameters:
+        - name: group_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - asset_ids
+              properties:
+                asset_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '200':
+          description: Assets assigned
+
+  # Asset Tags
+  /tags:
+    get:
+      tags:
+        - Asset Tags
+      summary: List asset tags
+      operationId: listTags
+      parameters:
+        - name: tag_type
+          in: query
+          schema:
+            type: string
+            enum: [manual, imported, dynamic]
+      responses:
+        '200':
+          description: List of tags
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AssetTag'
+
+    post:
+      tags:
+        - Asset Tags
+      summary: Create asset tag
+      operationId: createTag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetTagCreate'
+      responses:
+        '201':
+          description: Tag created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetTag'
+
+  /tags/{tag_id}:
+    get:
+      tags:
+        - Asset Tags
+      summary: Get tag details
+      operationId: getTag
+      parameters:
+        - name: tag_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Tag details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetTagDetail'
+
+    patch:
+      tags:
+        - Asset Tags
+      summary: Update tag
+      operationId: updateTag
+      parameters:
+        - name: tag_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetTagUpdate'
+      responses:
+        '200':
+          description: Tag updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetTag'
+
+  # Scans
+  /scans:
+    get:
+      tags:
+        - Scans
+      summary: List scan sessions
+      operationId: listScans
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: scanner_type
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of scans
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanListResponse'
+
+    post:
+      tags:
+        - Scans
+      summary: Upload and process scan file
+      operationId: uploadScan
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - scanner_type
+              properties:
+                file:
+                  type: string
+                  format: binary
+                scanner_type:
+                  type: string
+                  enum: [nessus, qualys, rapid7]
+                scan_name:
+                  type: string
+      responses:
+        '202':
+          description: Scan processing started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanSession'
+
+  /scans/{scan_id}:
+    get:
+      tags:
+        - Scans
+      summary: Get scan details
+      operationId: getScan
+      parameters:
+        - name: scan_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Scan details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanDetail'
+
+  # Reports
+  /reports/executive-summary:
+    get:
+      tags:
+        - Reports
+      summary: Get executive summary
+      operationId: getExecutiveSummary
+      parameters:
+        - name: business_group_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Executive summary data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutiveSummary'
+
+  /reports/vulnerability-trends:
+    get:
+      tags:
+        - Reports
+      summary: Get vulnerability trends
+      operationId: getVulnerabilityTrends
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [7d, 30d, 90d, 1y]
+            default: 30d
+        - name: business_group_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Vulnerability trend data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VulnerabilityTrends'
+
+  # Dashboard
+  /dashboard/summary:
+    get:
+      tags:
+        - Dashboard
+      summary: Get dashboard summary
+      operationId: getDashboardSummary
+      responses:
+        '200':
+          description: Dashboard summary data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummary'
+
+  /dashboard/risk-matrix:
+    get:
+      tags:
+        - Dashboard
+      summary: Get risk matrix data
+      operationId: getRiskMatrix
+      parameters:
+        - name: business_group_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Risk matrix data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskMatrix'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  parameters:
+    AssetIdParam:
+      name: asset_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSizeParam:
+      name: page_size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    SortParam:
+      name: sort
+      in: query
+      schema:
+        type: string
+        pattern: '^[+-]?[a-zA-Z_]+$'
+
+  responses:
+    UnauthorizedError:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ForbiddenError:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    # Common schemas
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+
+    Pagination:
+      type: object
+      required:
+        - page
+        - page_size
+        - total_count
+        - total_pages
+      properties:
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_count:
+          type: integer
+        total_pages:
+          type: integer
+
+    # Auth schemas
+    AuthResponse:
+      type: object
+      required:
+        - access_token
+        - refresh_token
+        - user
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      required:
+        - id
+        - email
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          type: string
+
+    # Asset schemas
+    Asset:
+      type: object
+      required:
+        - id
+        - asset_name
+        - type
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        asset_name:
+          type: string
+        asset_ip:
+          type: string
+        type:
+          type: string
+          enum: [Host, Code Project, Website, Image, Cloud Resource]
+        subtype:
+          type: string
+        criticality_score:
+          type: integer
+          minimum: 1
+          maximum: 5
+        business_groups:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AssetDetail:
+      allOf:
+        - $ref: '#/components/schemas/Asset'
+        - type: object
+          properties:
+            metadata:
+              type: object
+            vulnerability_summary:
+              type: object
+              properties:
+                critical:
+                  type: integer
+                high:
+                  type: integer
+                medium:
+                  type: integer
+                low:
+                  type: integer
+                total:
+                  type: integer
+            assigned_business_groups:
+              type: array
+              items:
+                $ref: '#/components/schemas/BusinessGroup'
+            assigned_tags:
+              type: array
+              items:
+                $ref: '#/components/schemas/AssetTag'
+
+    AssetCreate:
+      type: object
+      required:
+        - asset_name
+        - type
+      properties:
+        asset_name:
+          type: string
+        asset_ip:
+          type: string
+        type:
+          type: string
+          enum: [Host, Code Project, Website, Image, Cloud Resource]
+        subtype:
+          type: string
+        metadata:
+          type: object
+        criticality_score:
+          type: integer
+          minimum: 1
+          maximum: 5
+
+    AssetUpdate:
+      type: object
+      properties:
+        asset_name:
+          type: string
+        criticality_score:
+          type: integer
+          minimum: 1
+          maximum: 5
+        metadata:
+          type: object
+
+    AssetListResponse:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Asset'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    # Vulnerability schemas
+    Vulnerability:
+      type: object
+      required:
+        - id
+        - vulnerability_name
+        - severity
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        vulnerability_name:
+          type: string
+        cve:
+          type: string
+        cvss_score:
+          type: number
+        severity:
+          type: string
+          enum: [Critical, High, Medium, Low, Info]
+        status:
+          type: string
+          enum: [Open, Fixed, Accepted, False Positive]
+        first_seen:
+          type: string
+          format: date-time
+        last_seen:
+          type: string
+          format: date-time
+
+    VulnerabilityDetail:
+      allOf:
+        - $ref: '#/components/schemas/Vulnerability'
+        - type: object
+          properties:
+            description:
+              type: string
+            solution:
+              type: string
+            affected_assets:
+              type: array
+              items:
+                $ref: '#/components/schemas/Asset'
+            references:
+              type: array
+              items:
+                type: string
+
+    VulnerabilityListResponse:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Vulnerability'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    # Business Group schemas
+    BusinessGroup:
+      type: object
+      required:
+        - id
+        - name
+        - path
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        path:
+          type: string
+        parent_id:
+          type: string
+          format: uuid
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/BusinessGroup'
+
+    BusinessGroupDetail:
+      allOf:
+        - $ref: '#/components/schemas/BusinessGroup'
+        - type: object
+          properties:
+            asset_count:
+              type: integer
+            vulnerability_summary:
+              type: object
+            metadata:
+              type: object
+
+    BusinessGroupCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        parent_id:
+          type: string
+          format: uuid
+        metadata:
+          type: object
+
+    BusinessGroupUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        metadata:
+          type: object
+
+    # Asset Tag schemas
+    AssetTag:
+      type: object
+      required:
+        - id
+        - name
+        - tag_type
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        tag_type:
+          type: string
+          enum: [manual, imported, dynamic]
+        description:
+          type: string
+        metadata:
+          type: object
+
+    AssetTagDetail:
+      allOf:
+        - $ref: '#/components/schemas/AssetTag'
+        - type: object
+          properties:
+            asset_count:
+              type: integer
+            rule:
+              type: object
+
+    AssetTagCreate:
+      type: object
+      required:
+        - name
+        - tag_type
+      properties:
+        name:
+          type: string
+        tag_type:
+          type: string
+          enum: [manual, imported, dynamic]
+        description:
+          type: string
+        metadata:
+          type: object
+        rule:
+          type: object
+
+    AssetTagUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        metadata:
+          type: object
+        rule:
+          type: object
+
+    # Scan schemas
+    ScanSession:
+      type: object
+      required:
+        - id
+        - scan_name
+        - scanner_type
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        scan_name:
+          type: string
+        scanner_type:
+          type: string
+        status:
+          type: string
+          enum: [pending, processing, completed, failed]
+        created_at:
+          type: string
+          format: date-time
+
+    ScanDetail:
+      allOf:
+        - $ref: '#/components/schemas/ScanSession'
+        - type: object
+          properties:
+            scan_date:
+              type: string
+              format: date-time
+            asset_count:
+              type: integer
+            vulnerability_count:
+              type: integer
+            metadata:
+              type: object
+
+    ScanListResponse:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScanSession'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    # Report schemas
+    ExecutiveSummary:
+      type: object
+      properties:
+        total_assets:
+          type: integer
+        total_vulnerabilities:
+          type: integer
+        critical_vulnerabilities:
+          type: integer
+        high_vulnerabilities:
+          type: integer
+        risk_score:
+          type: number
+        trend:
+          type: string
+          enum: [improving, stable, worsening]
+        top_risks:
+          type: array
+          items:
+            type: object
+
+    VulnerabilityTrends:
+      type: object
+      properties:
+        period:
+          type: string
+        data_points:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              critical:
+                type: integer
+              high:
+                type: integer
+              medium:
+                type: integer
+              low:
+                type: integer
+
+    DashboardSummary:
+      type: object
+      properties:
+        assets:
+          type: object
+          properties:
+            total:
+              type: integer
+            by_type:
+              type: object
+            by_criticality:
+              type: object
+        vulnerabilities:
+          type: object
+          properties:
+            total:
+              type: integer
+            by_severity:
+              type: object
+            by_status:
+              type: object
+        business_groups:
+          type: object
+          properties:
+            total:
+              type: integer
+            with_critical_vulns:
+              type: integer
+        recent_scans:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScanSession'
+
+    RiskMatrix:
+      type: object
+      properties:
+        matrix:
+          type: array
+          items:
+            type: object
+            properties:
+              likelihood:
+                type: string
+              impact:
+                type: string
+              count:
+                type: integer
+              assets:
+                type: array
+                items:
+                  type: string 
