@@ -1,11 +1,45 @@
 # nessus-reporting-metrics-demo
 Generate vulnerability metrics from Nessus data
 
-# Asset Types Schema
+High Level System Design
+
+A simple proof of concept which implements a series of python scripts to peform extract, transform and load services.
+
+- Extract data from a source, in this case a Nessus file
+- Transform data by mapping fields to the field names in the proposed schema
+- Load transformed data into time series tables in a database (e.g. SQLite, or PostGres)
+- Generate additional table data such as metrics
+- Implement a simple API that enables a Web Application to consume the metric data for visualisation on dashboards
+
+## System Components
+
+## Sequence Diagram
+
+# Data Model
+
+## Vulnerabilty Schema
+to be completed
+
+## Asset Schema
+to be completed
+
+## Asset Category Schema
+to be completed
+
+## Organisational Groups Schema
+to be completed
+
+## Business Application Groups Schema
+to be completed
+
+## Relationships
+to be completed
+
+## Asset Types Schema
 
 This project uses a standardised schema for categorising assets, based on Vulcan Cyber ExposureOS™ documentation. Below are the permitted asset types and their descriptions, along with examples and subcategories where relevant.
 
-## Asset Types
+### Asset Types
 
 | Type           | Description                                                                 | Examples / Subtypes                                                                 |
 |----------------|-----------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
