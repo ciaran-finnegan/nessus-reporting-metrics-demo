@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Asset",
+  "description": "Schema for an asset, including hosts, websites, code projects, images, and cloud resources. Fields are based on CSV examples, asset_types.yaml, and JSON structure.",
+  "type": "object",
+  "properties": {
+    "Asset_Name": { "type": "string", "description": "The human-readable name of the asset (e.g., server name, website name)." },
+    "Asset_IP": { "type": "string", "description": "The IP address of the asset, if applicable (e.g., for hosts)." },
+    "Asset_OS": { "type": "string", "description": "Operating system of the asset (e.g., Windows, Linux)." },
+    "OS_Version": { "type": "string", "description": "Version of the operating system running on the asset." },
+    "Asset_Last_Seen": { "type": "string", "format": "date-time", "description": "The last date and time the asset was seen or scanned." },
+    "Asset_Tags": { "type": "array", "items": { "type": "string" }, "description": "Tags or labels associated with the asset for categorisation and filtering." },
+    "Business_Groups": { "type": "array", "items": { "type": "string" }, "description": "Business groups or organisational units responsible for or associated with this asset." },
+    "Owners": { "type": "array", "items": { "type": "string" }, "description": "Dynamic properties indicating the owners or responsible parties for this asset." },
+    "Inclusion_Date": { "type": "string", "format": "date-time", "description": "The date when this asset was included or imported into the asset management system." },
+    "Cloud_Instance_ID": { "type": "string", "description": "Cloud instance identifier if this is a cloud-based asset." },
+    "Asset_ID": { "type": "string", "description": "Unique identifier for the asset." },
+    "Asset_State": { "type": "string", "description": "Current state of the asset (e.g., Running, Stopped)." },
+    "Asset_First_Seen": { "type": "string", "format": "date-time", "description": "The first date and time the asset was seen or added to the system." },
+    "Type": { "type": "string", "description": "The high-level type of asset (e.g., Host, Website, Code Project, Image, Cloud Resource)." },
+    "Provider": { "type": "string", "description": "Cloud provider for cloud resources (e.g., AWS, Azure, GCP)." },
+    "Subtype": { "type": "string", "description": "Specific subtype of the asset, as defined in asset_types.yaml (e.g., EC2 Instance, S3 Bucket, Web Application)." },
+    "Custom_Field1": { "type": "string", "description": "Custom field for additional metadata." },
+    "Custom_Field2": { "type": "string", "description": "Custom field for additional metadata." },
+    "Custom_Field3": { "type": "string", "description": "Custom field for additional metadata." }
+  },
+  "required": ["Asset_Name", "Type"],
+  "additionalProperties": true
+} 

@@ -1,0 +1,5 @@
+{
+  "type": "Cloud Resource",
+  "provider": "AWS",
+  "subtype": "EC2 Instance"
+} 

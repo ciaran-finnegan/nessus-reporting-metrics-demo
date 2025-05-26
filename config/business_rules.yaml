@@ -1,0 +1,158 @@
+# Business Context Rules Configuration
+# This file defines automatic business group assignments and dynamic tag rules
+
+business_groups:
+  # Geographic regions
+  - name: "EMEA"
+    parent: "Geographic Regions"
+    description: "Europe, Middle East, and Africa"
+    rules:
+      - type: "ip_range"
+        ranges: 
+          - "172.16.0.0/12"
+          - "10.20.0.0/16"
+      - type: "hostname_pattern"
+        patterns: 
+          - "emea-*"
+          - "*-lon-*"
+          - "*-fra-*"
+          
+  - name: "APAC"
+    parent: "Geographic Regions"
+    description: "Asia Pacific region"
+    rules:
+      - type: "hostname_pattern"
+        patterns: 
+          - "apac-*"
+          - "*-syd-*"
+          - "*-tok-*"
+          
+  - name: "Americas"
+    parent: "Geographic Regions"
+    description: "North and South America"
+    rules:
+      - type: "hostname_pattern"
+        patterns: 
+          - "amer-*"
+          - "*-nyc-*"
+          - "*-sfo-*"
+
+  # Environments
+  - name: "Production"
+    parent: "Environments"
+    description: "Production environment assets"
+    rules:
+      - type: "tag_match"
+        tags: ["production", "prod"]
+      - type: "hostname_pattern"
+        patterns: 
+          - "prod-*"
+          - "*-prod"
+          - "*-prd"
+          
+  - name: "Development"
+    parent: "Environments"
+    description: "Development environment assets"
+    rules:
+      - type: "tag_match"
+        tags: ["development", "dev"]
+      - type: "hostname_pattern"
+        patterns: 
+          - "dev-*"
+          - "*-dev"
+          
+  # Departments
+  - name: "Finance"
+    parent: "Departments"
+    description: "Finance department assets"
+    rules:
+      - type: "hostname_pattern"
+        patterns: 
+          - "fin-*"
+          - "accounting-*"
+          - "*-finance-*"
+          
+  - name: "IT Infrastructure"
+    parent: "Departments"
+    description: "IT infrastructure and operations"
+    rules:
+      - type: "hostname_pattern"
+        patterns: 
+          - "it-*"
+          - "infra-*"
+          - "*-dc-*"  # Data center
+
+dynamic_tags:
+  - name: "#external-facing"
+    type: "external_facing"
+    description: "Assets exposed to the internet"
+    criticality_score: 5
+    color: "#FF0000"
+    is_favorite: true
+    
+  - name: "#critical-vulnerabilities"
+    type: "vulnerability_exists"
+    description: "Assets with critical severity vulnerabilities"
+    criticality_score: 4
+    color: "#FF4500"
+    is_favorite: true
+    rule:
+      severity: ["Critical"]
+      
+  - name: "#high-vulnerabilities"
+    type: "vulnerability_exists"
+    description: "Assets with high severity vulnerabilities"
+    criticality_score: 3
+    color: "#FFA500"
+    rule:
+      severity: ["High"]
+    
+  - name: "#windows-servers"
+    type: "operating_system"
+    description: "Windows Server operating systems"
+    rule:
+      os_patterns: ["*Windows Server*"]
+      
+  - name: "#linux-servers"
+    type: "operating_system"
+    description: "Linux-based servers"
+    rule:
+      os_patterns: ["*Linux*", "*Ubuntu*", "*CentOS*", "*Red Hat*"]
+      
+  - name: "#databases"
+    type: "asset_name_contains"
+    description: "Database servers"
+    criticality_score: 4
+    rule:
+      patterns: ["*-db-*", "*-sql-*", "*-mysql-*", "*-postgres-*", "*-oracle-*"]
+      
+  - name: "#web-servers"
+    type: "asset_name_contains"
+    description: "Web servers"
+    rule:
+      patterns: ["*-web-*", "*-www-*", "*-api-*", "*-nginx-*", "*-apache-*"]
+      
+  - name: "#cloud-assets"
+    type: "cloud_provider"
+    description: "Cloud-hosted assets"
+    rule:
+      providers: ["AWS", "Azure", "GCP"]
+
+# Asset criticality overrides
+# These patterns will set specific criticality scores for matching assets
+criticality_rules:
+  - pattern: "*-prod-*"
+    criticality: 4
+    reason: "Production assets"
+    
+  - pattern: "*-db-*"
+    criticality: 5
+    reason: "Database servers are critical"
+    
+  - pattern: "*-test-*"
+    criticality: 2
+    reason: "Test environment"
+    
+  - pattern: "*-dev-*"
+    criticality: 1
+    reason: "Development environment" 
