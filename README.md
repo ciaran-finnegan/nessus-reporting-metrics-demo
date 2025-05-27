@@ -169,6 +169,32 @@ For detailed usage, see:
 - [ETL Pipeline Guide](docs/ETL_GUIDE.md) - Basic ETL operations
 - [Business Context Guide](docs/BUSINESS_CONTEXT_GUIDE.md) - Business Groups and Tags
 
+## Generating Time Series Nessus Files for Metrics Testing
+
+To create a realistic time series of Nessus scan files for testing MTTR and remediation metrics, use the provided script:
+
+### 1. Generate Weekly Nessus Files
+
+From the `data/nessus_reports/sample_files/nessus/` directory, run:
+
+```bash
+python generate_time_series_nessus.py
+```
+
+This will create 8 new `.nessus` files, each simulating a weekly scan with realistic vulnerability lifecycle (some vulns close, some persist, some new ones appear). The scan dates will span the last 8 weeks up to the current date.
+
+### 2. Process the Generated Files
+
+You can then run the ETL pipeline on each generated file to populate your metrics tables and views:
+
+```bash
+python test_timeseries_etl.py nessus_scan_20250331.nessus
+python test_timeseries_etl.py nessus_scan_20250407.nessus
+# ...and so on for each generated file
+```
+
+This will ensure your MTTR and trend metrics are populated with rich, realistic data for your web app UI.
+
 ## System Architecture
 
 ### High Level Design
@@ -894,3 +920,12 @@ Core dependencies are listed in `requirements.txt`:
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+### Metrics Pipeline Order
+
+> **Note:** The remediation status resolver step (`etl/metrics/remediation_status_resolver.py`) must run first in the metrics pipeline before MTTR and other metrics are calculated. See `etl/metrics/README.md` for details.
+
+1. Remediation Status Resolver (must run first)
+2. MTTR Calculator
+3. Metrics Generator
+4. Reporting Tables Manager

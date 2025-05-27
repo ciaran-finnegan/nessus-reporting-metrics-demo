@@ -4,6 +4,7 @@ from etl.loaders.supabase_timeseries_loader import SupabaseTimeSeriesLoader
 from etl.metrics.mttr_calculator import MTTRCalculator
 from etl.metrics.metrics_generator import MetricsGenerator
 from etl.metrics.reporting_tables import ReportingTablesManager
+from etl.metrics.remediation_status_resolver import resolve_remediation_status
 from typing import List, Dict, Any
 import logging
 import os
@@ -34,7 +35,8 @@ class EnhancedNessusETLPipeline:
     
     def process_nessus_file(self, nessus_file_path: str, generate_metrics: bool = True) -> Dict[str, Any]:
         """
-        Process a single Nessus file and optionally generate metrics
+        Process a single Nessus file, load data, and optionally generate metrics.
+        This now includes a remediation status resolution step that must run before metrics.
         
         Args:
             nessus_file_path: Path to the .nessus file
@@ -47,7 +49,9 @@ class EnhancedNessusETLPipeline:
             "file_path": nessus_file_path,
             "success": False,
             "error": None,
-            "metrics_generated": False
+            "metrics_generated": False,
+            "assets_loaded": 0,
+            "vulnerabilities_loaded": 0,
         }
         
         try:
@@ -76,14 +80,17 @@ class EnhancedNessusETLPipeline:
             transformed_vulnerabilities = self.transformer.transform_vulnerabilities(raw_vulnerabilities)
             transformed_assets = self.transformer.transform_assets(raw_assets)
             
+            # 1. Resolve remediation status FIRST
+            vulnerabilities = resolve_remediation_status(transformed_vulnerabilities, raw_vulnerabilities)
+            
             # Load
             assets_loaded = self.loader.load_assets(transformed_assets)
-            vulnerabilities_loaded = self.loader.load_vulnerabilities(transformed_vulnerabilities)
+            vulnerabilities_loaded = self.loader.load_vulnerabilities(vulnerabilities)
             
             # Update scan session stats
             self.loader.update_scan_session_stats(
                 total_hosts=len(transformed_assets),
-                total_vulnerabilities=len(transformed_vulnerabilities)
+                total_vulnerabilities=len(vulnerabilities)
             )
             
             # Generate metrics if requested

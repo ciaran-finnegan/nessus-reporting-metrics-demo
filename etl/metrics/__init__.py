@@ -10,6 +10,7 @@ This module provides comprehensive metrics calculation including:
 from .mttr_calculator import MTTRCalculator
 from .metrics_generator import MetricsGenerator
 from .reporting_tables import ReportingTablesManager
+from .remediation_status_resolver import resolve_remediation_status  # Must be run first in metrics pipeline
 
 __all__ = [
     'MTTRCalculator',
